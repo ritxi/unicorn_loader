@@ -1,0 +1,65 @@
+#!/usr/bin/env ruby
+# encoding: binary
+
+require 'thor'
+require 'unicorn_loader'
+
+class AppInstaller < Thor
+  include Thor::Actions
+
+  attr_reader :port
+
+  desc "new PORT [DOMAIN]", "generates new application configuration files"
+  def new(port, domain=nil)
+    @application_domain = domain
+    @port = port
+
+    update_apps_port
+    nginx_config
+  rescue UnicornLoader::Exceptions::AlreadyConfiguredPortException => e
+    puts e.message
+  rescue UnicornLoader::Exceptions::AlreadyConfiguredAppException => e
+    puts e.message
+  rescue UnicornLoader::Exceptions::PathNotFoundException => e
+    puts e.message
+  end
+
+  private
+
+  def config
+    @config ||= UnicornLoader::Config.new
+  end
+
+  def update_apps_port
+    config[application_name] = port.to_i
+  end
+
+  def nginx_config
+    source = config.nginx_virtual_host_template_path
+    destination = "/Users/ricard/Desktop/nginx/conf.d/#{application_name}.conf"
+    template source, destination, { app_name: application_name, app_path: app_path,
+                                    app_port: port, app_domain: application_domain }
+  end
+
+  def local_dns_config
+    insert_into_file '/etc/hosts', "127.0.0.1 #{application_domain}"
+  end
+
+  def application_domain
+    @application_domain ||= "#{application_name}.dev"
+  end
+
+  def application_domain=(app_domain)
+    @application_domain = app_domain
+  end
+
+  def application_name
+    @application_name ||= app_path.split('/').last
+  end
+
+  def app_path
+    Dir::pwd.to_s
+  end
+end
+
+AppInstaller.start

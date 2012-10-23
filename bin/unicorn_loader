@@ -1,0 +1,22 @@
+#!/usr/bin/env ruby
+# encoding: binary
+require 'unicorn_loader'
+require "bundler/setup"
+require 'unicorn/launcher'
+require 'optparse'
+
+
+servers = UnicornLoader::Config.new
+
+ENV["RACK_ENV"] ||= "development"
+rackup_opts = Unicorn::Configurator::RACKUP
+
+app_name = if ARGV.first.nil?
+  Dir::pwd.split('/').last
+else
+  ARGV.first
+end
+
+app = Unicorn.builder(ARGV[0] || 'config.ru', {environment: ENV["RACK_ENV"]})
+
+Unicorn::HttpServer.new(app, {listeners: [servers[app_name]]}).start.join

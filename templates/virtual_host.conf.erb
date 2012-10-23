@@ -1,0 +1,31 @@
+upstream <%= config[:app_name] %>_server {
+  server 127.0.0.1:<%= config[:app_port] %>;
+}
+
+server {
+  listen 3000;
+  client_max_body_size 4G;
+  client_header_buffer_size 10k;
+  server_name <%= config[:app_domain] %>;
+  keepalive_timeout 5;
+
+  # Location of our static files
+  root <%= config[:app_path] %>/public;
+
+  error_page 500 502 503 504 /500.html;
+
+   location / {
+      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header Host $http_host;
+      proxy_redirect off;
+
+      if (!-f $request_filename) {
+        proxy_pass http://<%= config[:app_name] %>_server;
+        break;
+      }
+   }
+
+   location = /500.html {
+      root <%= config[:app_path] %>/public;
+   }
+}
